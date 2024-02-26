@@ -18,7 +18,7 @@ open class QuiltMod(
     private val values: Map<String, LoaderValue>,
     val nested: List<NestedQuiltMod>,
     val paths: List<Path>,
-    val mixin: String,
+    val mixin: List<String>,
     val intermediate: String
 ) : ModMetadata {
     lateinit var container: QuiltModContainer

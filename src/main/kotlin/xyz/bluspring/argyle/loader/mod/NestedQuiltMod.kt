@@ -19,7 +19,7 @@ class NestedQuiltMod(private val qFile: String,
                      values: Map<String, LoaderValue>,
                      nested: List<NestedQuiltMod>,
     paths: List<Path>,
-    mixin: String,
+    mixin: List<String>,
     intermediate: String
 ) : QuiltMod(
     id,

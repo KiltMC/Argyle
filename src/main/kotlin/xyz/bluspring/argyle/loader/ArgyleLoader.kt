@@ -24,6 +24,8 @@ import kotlin.io.path.toPath
 import kotlin.system.exitProcess
 
 class ArgyleLoader {
+    val quiltMods = mutableListOf<QuiltMod>()
+
     fun preloadMods() {
         Argyle.logger.info("Scanning the mods directory for Quilt mods...")
 
@@ -103,7 +105,12 @@ class ArgyleLoader {
                     paths = listOf(modFile.toPath()),
                     depends = listOf(),
                     breaks = listOf(),
-                    mixin = if (qmj.has("mixin")) qmj.get("mixin").asString else "",
+                    mixin = if (qmj.has("mixin")) {
+                        if (qmj.get("mixin").isJsonArray)
+                            qmj.getAsJsonArray("mixin").map { it.asString }
+                        else
+                            listOf(qmj.get("mixin").asString)
+                    } else listOf(),
                     intermediate = qlMeta.get("intermediate_mappings").asString
                 )
 
@@ -112,15 +119,18 @@ class ArgyleLoader {
 
                 Argyle.logger.info("Discovered Quilt mod ${mod.name()} (${mod.id()}) ${mod.version().raw()}")
 
+                quiltMods.add(mod)
                 addModToLoader(mod)
                 FabricLauncherBase.getLauncher().addToClassPath(modFile.toURI().toPath())
 
-                if (mod.mixin.isNotBlank()) {
-                    Mixins.addConfiguration(mod.mixin)
+                if (mod.mixin.isNotEmpty()) {
+                    mod.mixin.forEach {
+                        Mixins.addConfiguration(it)
 
-                    val config = Mixins.getConfigs().firstOrNull { it.name == mod.mixin } ?: return mapOf()
-                    config.config.decorate(FabricUtil.KEY_MOD_ID, mod.id())
-                    config.config.decorate(FabricUtil.KEY_COMPATIBILITY, FabricUtil.COMPATIBILITY_LATEST)
+                        val config = Mixins.getConfigs().firstOrNull { a -> a.name == it } ?: return mapOf()
+                        config.config.decorate(FabricUtil.KEY_MOD_ID, mod.id())
+                        config.config.decorate(FabricUtil.KEY_COMPATIBILITY, FabricUtil.COMPATIBILITY_LATEST)
+                    }
                 }
             }
         } catch (e: Exception) {
