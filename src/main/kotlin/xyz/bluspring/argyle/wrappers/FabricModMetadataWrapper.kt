@@ -70,10 +70,12 @@ class FabricModMetadataWrapper(val wrapped: FabricModMetadata) : ModMetadata {
     }
 
     override fun value(key: String): LoaderValue? {
-        TODO("Not yet implemented")
+        val value = wrapped.getCustomValue(key) ?: return null
+
+        return QuiltLoaderValueWrapper(key, value)
     }
 
     override fun values(): Map<String, LoaderValue> {
-        TODO("Not yet implemented")
+        return wrapped.customValues.mapValues { (key, value) -> QuiltLoaderValueWrapper(key, value) }
     }
 }

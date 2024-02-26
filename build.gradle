@@ -12,11 +12,10 @@ base {
 }
 
 repositories {
-    // Add repositories to retrieve artifacts from in here.
-    // You should only use this when depending on other mods because
-    // Loom adds the essential maven repositories to download Minecraft and libraries from automatically.
-    // See https://docs.gradle.org/current/userguide/declaring_repositories.html
-    // for more information about repositories.
+    maven {
+        name "QuiltMC"
+        url "https://maven.quiltmc.org/repository/release"
+    }
 }
 
 dependencies {
@@ -27,6 +26,10 @@ dependencies {
 
     // Fabric API. This is technically optional, but you probably want it anyway.
     modImplementation "net.fabricmc:fabric-language-kotlin:${project.fabric_kotlin_version}"
+
+    include(api("org.quiltmc.quilt-config.serializers:toml:${project.quilt_config}"))
+    include(api("org.quiltmc.quilt-config.serializers:json5:${project.quilt_config}"))
+    include(api("org.quiltmc:quilt-config:${project.quilt_config}"))
 }
 
 processResources {
