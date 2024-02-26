@@ -80,6 +80,8 @@ class ArgyleLoader {
                 FabricLauncherBase.getLauncher().addToClassPath(path)
             }
         }
+
+        FabricLoaderImpl.INSTANCE.loadAccessWideners()
     }
 
     fun loadMods() {
@@ -151,8 +153,8 @@ class ArgyleLoader {
                             listOf(qmj.get("mixin").asString)
                     } else listOf(),
                     intermediate = qlMeta.get("intermediate_mappings").asString,
-                    accessWidener = if (qlMeta.has("access_widener"))
-                        qlMeta.get("access_widener").asString
+                    accessWidener = if (qmj.has("access_widener"))
+                        qmj.get("access_widener").asString
                     else
                         null
                 )
@@ -214,6 +216,7 @@ class ArgyleLoader {
     }
 
     fun addModToLoader(mod: QuiltMod) {
+        mod.container = QuiltModContainer(mod.container.candidate)
         FabricLoaderImpl.INSTANCE.modsInternal.add(mod.container)
 
         val modMapField = FabricLoaderImpl::class.java.getDeclaredField("modMap")
