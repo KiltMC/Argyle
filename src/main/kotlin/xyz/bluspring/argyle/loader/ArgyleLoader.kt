@@ -2,10 +2,12 @@ package xyz.bluspring.argyle.loader
 
 import com.google.gson.JsonParser
 import net.fabricmc.loader.api.FabricLoader
+import net.fabricmc.loader.api.LanguageAdapter
 import net.fabricmc.loader.api.Version
 import net.fabricmc.loader.impl.FabricLoaderImpl
 import net.fabricmc.loader.impl.ModContainerImpl
 import net.fabricmc.loader.impl.discovery.ModCandidate
+import net.fabricmc.loader.impl.entrypoint.EntrypointStorage
 import net.fabricmc.loader.impl.gui.FabricGuiEntry
 import net.fabricmc.loader.impl.gui.FabricStatusTree
 import net.fabricmc.loader.impl.launch.FabricLauncherBase
@@ -14,6 +16,7 @@ import org.spongepowered.asm.mixin.FabricUtil
 import org.spongepowered.asm.mixin.Mixins
 import xyz.bluspring.argyle.Argyle
 import xyz.bluspring.argyle.impl.ModContributorImpl
+import xyz.bluspring.argyle.loader.mod.FabricEntrypointMeta
 import xyz.bluspring.argyle.loader.mod.FabricModMetadata
 import xyz.bluspring.argyle.loader.mod.QuiltMod
 import xyz.bluspring.argyle.loader.mod.QuiltModContainer
@@ -114,6 +117,23 @@ class ArgyleLoader {
                     intermediate = qlMeta.get("intermediate_mappings").asString
                 )
 
+                if (qlMeta.has("entrypoints")) {
+                    val entrypoints = qlMeta.getAsJsonObject("entrypoints")
+
+                    for (key in entrypoints.keySet()) {
+                        val entrypointClasses = entrypoints.getAsJsonArray(key)
+
+                        val list = mutableListOf<FabricEntrypointMeta>()
+                        for (entrypointClass in entrypointClasses) {
+                            list.add(FabricEntrypointMeta(entrypointClass.asString))
+                        }
+
+                        // We don't need to remap keys, because Quilt initializes mods
+                        // using QSL mixins
+                        mod.entrypoints[key] = list
+                    }
+                }
+
                 val candidate = createModCandidate(mod)
                 mod.container = QuiltModContainer(candidate)
 
@@ -167,5 +187,19 @@ class ArgyleLoader {
         val modMap = modMapField.get(FabricLoaderImpl.INSTANCE) as MutableMap<String, ModContainerImpl>
 
         modMap[mod.id()] = mod.container
+
+        val entrypointStorageField = FabricLoaderImpl::class.java.getDeclaredField("entrypointStorage")
+        entrypointStorageField.isAccessible = true
+        val entrypointStorage = entrypointStorageField.get(FabricLoaderImpl.INSTANCE) as EntrypointStorage
+
+        val adapterMapField = FabricLoaderImpl::class.java.getDeclaredField("adapterMap")
+        adapterMapField.isAccessible = true
+        val adapterMap = adapterMapField.get(FabricLoaderImpl.INSTANCE) as Map<String, LanguageAdapter>
+
+        mod.entrypoints.forEach { (key, list) ->
+            for (entrypointMeta in list) {
+                entrypointStorage.add(mod.container, key, entrypointMeta, adapterMap)
+            }
+        }
     }
 }

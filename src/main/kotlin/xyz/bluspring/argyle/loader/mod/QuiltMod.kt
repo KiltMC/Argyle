@@ -22,6 +22,7 @@ open class QuiltMod(
     val intermediate: String
 ) : ModMetadata {
     lateinit var container: QuiltModContainer
+    val entrypoints = mutableMapOf<String, MutableList<FabricEntrypointMeta>>()
 
     override fun id(): String {
         return id
