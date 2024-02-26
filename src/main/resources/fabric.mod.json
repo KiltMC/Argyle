@@ -1,0 +1,33 @@
+{
+    "schemaVersion": 1,
+    "id": "argyle",
+    "version": "${version}",
+    "name": "Argyle",
+    "description": "A Fabric mod that brings Quilt mods into the Fabric ecosystem.",
+    "authors": [
+        "BluSpring"
+    ],
+    "contact": {
+        "repo": "https://github.com/KiltMC/Argyle"
+    },
+    "license": "Apache-2.0",
+    "icon": "assets/argyle/icon.png",
+    "environment": "*",
+    "entrypoints": {
+        "client": [
+            "xyz.bluspring.argyle.client.ArgyleClient"
+        ],
+        "main": [
+            "xyz.bluspring.argyle.Argyle"
+        ]
+    },
+    "mixins": [
+        "argyle.mixins.json"
+    ],
+    "depends": {
+        "fabricloader": ">=${loader_version}",
+        "fabric-api": "*",
+        "minecraft": "*",
+        "fabric-language-kotlin": ">=${fabric_kotlin_version}"
+    }
+}
