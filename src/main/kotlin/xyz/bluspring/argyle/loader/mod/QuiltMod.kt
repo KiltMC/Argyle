@@ -19,7 +19,8 @@ open class QuiltMod(
     val nested: List<NestedQuiltMod>,
     val paths: List<Path>,
     val mixin: List<String>,
-    val intermediate: String
+    val intermediate: String,
+    val accessWidener: String? = null
 ) : ModMetadata {
     lateinit var container: QuiltModContainer
     val entrypoints = mutableMapOf<String, MutableList<FabricEntrypointMeta>>()

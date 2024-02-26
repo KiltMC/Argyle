@@ -4,6 +4,6 @@ import net.fabricmc.loader.impl.ModContainerImpl
 import net.fabricmc.loader.impl.discovery.ModCandidate
 
 class QuiltModContainer(
-    candidate: ModCandidate
+    val candidate: ModCandidate
 ) : ModContainerImpl(candidate) {
 }

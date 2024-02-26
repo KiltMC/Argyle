@@ -20,6 +20,7 @@ class ArgyleMixinConfig : IMixinConfigPlugin {
     }
 
     override fun getMixins(): MutableList<String>? {
+        Argyle.loader.loadMods()
         return null
     }
 

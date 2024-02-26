@@ -143,7 +143,7 @@ class FabricModMetadata(private val mod: QuiltMod) : ModMetadata, LoaderModMetad
     }
 
     override fun getAccessWidener(): String? {
-        return null
+        return mod.accessWidener
     }
 
     override fun getOldInitializers(): MutableCollection<String> {

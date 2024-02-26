@@ -1,5 +1,6 @@
 package xyz.bluspring.argyle.loader
 
+import com.google.gson.JsonArray
 import com.google.gson.JsonParser
 import net.fabricmc.loader.api.FabricLoader
 import net.fabricmc.loader.api.LanguageAdapter
@@ -7,6 +8,7 @@ import net.fabricmc.loader.api.Version
 import net.fabricmc.loader.impl.FabricLoaderImpl
 import net.fabricmc.loader.impl.ModContainerImpl
 import net.fabricmc.loader.impl.discovery.ModCandidate
+import net.fabricmc.loader.impl.discovery.RuntimeModRemapper
 import net.fabricmc.loader.impl.entrypoint.EntrypointStorage
 import net.fabricmc.loader.impl.gui.FabricGuiEntry
 import net.fabricmc.loader.impl.gui.FabricStatusTree
@@ -23,7 +25,6 @@ import xyz.bluspring.argyle.loader.mod.QuiltModContainer
 import xyz.bluspring.argyle.wrappers.FabricVersionWrapper
 import java.io.File
 import java.util.zip.ZipFile
-import kotlin.io.path.toPath
 import kotlin.system.exitProcess
 
 class ArgyleLoader {
@@ -65,11 +66,46 @@ class ArgyleLoader {
         }
 
         // TODO: validate deps
+
+        if (FabricLoader.getInstance().isDevelopmentEnvironment) {
+            Argyle.logger.info("Detected that we are in a development environment, remapping Quilt mods to current namespace.")
+            val cacheDir = FabricLoader.getInstance().gameDir.resolve(FabricLoaderImpl.CACHE_DIR_NAME)
+            RuntimeModRemapper.remap(quiltMods.map { it.container.candidate }, cacheDir, cacheDir.resolve("processedMods"))
+        }
+
+        for (mod in quiltMods) {
+            addModToLoader(mod)
+
+            for (path in mod.container.candidate.paths) {
+                FabricLauncherBase.getLauncher().addToClassPath(path)
+            }
+        }
+    }
+
+    fun loadMods() {
+        val configToModMap = mutableMapOf<String, ModContainerImpl>()
+
+        for (mod in quiltMods) {
+            if (mod.mixin.isNotEmpty()) {
+                mod.mixin.forEach {
+                    configToModMap[it] = mod.container
+                    Mixins.addConfiguration(it)
+                }
+            }
+        }
+
+        Mixins.getConfigs().forEach { rawConfig ->
+            val mod = configToModMap[rawConfig.name] ?: return@forEach
+
+            val config = rawConfig.config
+            config.decorate(FabricUtil.KEY_MOD_ID, mod.metadata.id)
+            config.decorate(FabricUtil.KEY_COMPATIBILITY, FabricUtil.COMPATIBILITY_LATEST)
+        }
     }
 
     fun preloadJarMod(modFile: File, jarFile: ZipFile): Map<String, Exception> {
         // don't you dare load Fabric mods, we will end up in an infinite loop if we do.
-        if (jarFile.getEntry("fabric.mod.json") != null)
+        if (jarFile.getEntry("fabric.mod.json") != null || jarFile.getEntry("quilt.mod.json") == null)
             return mapOf()
 
         val thrownExceptions = mutableMapOf<String, Exception>()
@@ -78,7 +114,7 @@ class ArgyleLoader {
             val qmjEntry = jarFile.getEntry("quilt.mod.json")
 
             if (qmjEntry == null) {
-                Argyle.logger.warn("Did not load mod ${modFile.name} due to missing QMJ!")
+                Argyle.logger.warn("Did not load mod ${modFile.name} due to missing QMJ! (how did you get here?)")
                 return mapOf()
             }
 
@@ -114,14 +150,24 @@ class ArgyleLoader {
                         else
                             listOf(qmj.get("mixin").asString)
                     } else listOf(),
-                    intermediate = qlMeta.get("intermediate_mappings").asString
+                    intermediate = qlMeta.get("intermediate_mappings").asString,
+                    accessWidener = if (qlMeta.has("access_widener"))
+                        qlMeta.get("access_widener").asString
+                    else
+                        null
                 )
 
                 if (qlMeta.has("entrypoints")) {
                     val entrypoints = qlMeta.getAsJsonObject("entrypoints")
 
                     for (key in entrypoints.keySet()) {
-                        val entrypointClasses = entrypoints.getAsJsonArray(key)
+                        val entrypointValue = entrypoints.get(key)
+                        val entrypointClasses = if (entrypointValue.isJsonArray)
+                            entrypoints.getAsJsonArray(key)
+                        else
+                            JsonArray().apply {
+                                this.add(entrypointValue.asString)
+                            }
 
                         val list = mutableListOf<FabricEntrypointMeta>()
                         for (entrypointClass in entrypointClasses) {
@@ -140,18 +186,6 @@ class ArgyleLoader {
                 Argyle.logger.info("Discovered Quilt mod ${mod.name()} (${mod.id()}) ${mod.version().raw()}")
 
                 quiltMods.add(mod)
-                addModToLoader(mod)
-                FabricLauncherBase.getLauncher().addToClassPath(modFile.toURI().toPath())
-
-                if (mod.mixin.isNotEmpty()) {
-                    mod.mixin.forEach {
-                        Mixins.addConfiguration(it)
-
-                        val config = Mixins.getConfigs().firstOrNull { a -> a.name == it } ?: return mapOf()
-                        config.config.decorate(FabricUtil.KEY_MOD_ID, mod.id())
-                        config.config.decorate(FabricUtil.KEY_COMPATIBILITY, FabricUtil.COMPATIBILITY_LATEST)
-                    }
-                }
             }
         } catch (e: Exception) {
             thrownExceptions[modFile.name] = e
@@ -168,7 +202,7 @@ class ArgyleLoader {
 
         val metadata = createLoaderMetadata(mod)
 
-        return createPlainMethod.invoke(this, mod.paths, metadata, false, mutableListOf<ModCandidate>().apply {
+        return createPlainMethod.invoke(this, mod.paths, metadata, FabricLoader.getInstance().isDevelopmentEnvironment, mutableListOf<ModCandidate>().apply {
             mod.nested.forEach {
                 this.add(createModCandidate(it))
             }
