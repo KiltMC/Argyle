@@ -8,7 +8,10 @@ import net.fabricmc.loader.impl.ModContainerImpl
 import net.fabricmc.loader.impl.discovery.ModCandidate
 import net.fabricmc.loader.impl.gui.FabricGuiEntry
 import net.fabricmc.loader.impl.gui.FabricStatusTree
+import net.fabricmc.loader.impl.launch.FabricLauncherBase
 import net.fabricmc.loader.impl.metadata.LoaderModMetadata
+import org.spongepowered.asm.mixin.FabricUtil
+import org.spongepowered.asm.mixin.Mixins
 import xyz.bluspring.argyle.Argyle
 import xyz.bluspring.argyle.impl.ModContributorImpl
 import xyz.bluspring.argyle.loader.mod.FabricModMetadata
@@ -17,6 +20,7 @@ import xyz.bluspring.argyle.loader.mod.QuiltModContainer
 import xyz.bluspring.argyle.wrappers.FabricVersionWrapper
 import java.io.File
 import java.util.zip.ZipFile
+import kotlin.io.path.toPath
 import kotlin.system.exitProcess
 
 class ArgyleLoader {
@@ -109,6 +113,15 @@ class ArgyleLoader {
                 Argyle.logger.info("Discovered Quilt mod ${mod.name()} (${mod.id()}) ${mod.version().raw()}")
 
                 addModToLoader(mod)
+                FabricLauncherBase.getLauncher().addToClassPath(modFile.toURI().toPath())
+
+                if (mod.mixin.isNotBlank()) {
+                    Mixins.addConfiguration(mod.mixin)
+
+                    val config = Mixins.getConfigs().firstOrNull { it.name == mod.mixin } ?: return mapOf()
+                    config.config.decorate(FabricUtil.KEY_MOD_ID, mod.id())
+                    config.config.decorate(FabricUtil.KEY_COMPATIBILITY, FabricUtil.COMPATIBILITY_LATEST)
+                }
             }
         } catch (e: Exception) {
             thrownExceptions[modFile.name] = e
