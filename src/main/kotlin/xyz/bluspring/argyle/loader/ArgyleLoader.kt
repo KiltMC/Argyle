@@ -7,7 +7,7 @@ import net.fabricmc.loader.api.LanguageAdapter
 import net.fabricmc.loader.api.Version
 import net.fabricmc.loader.impl.FabricLoaderImpl
 import net.fabricmc.loader.impl.ModContainerImpl
-import net.fabricmc.loader.impl.discovery.ModCandidate
+import net.fabricmc.loader.impl.discovery.ModCandidateImpl
 import net.fabricmc.loader.impl.discovery.RuntimeModRemapper
 import net.fabricmc.loader.impl.entrypoint.EntrypointStorage
 import net.fabricmc.loader.impl.gui.FabricGuiEntry
@@ -197,18 +197,18 @@ class ArgyleLoader {
         return thrownExceptions
     }
 
-    fun createModCandidate(mod: QuiltMod): ModCandidate {
+    fun createModCandidate(mod: QuiltMod): ModCandidateImpl {
         //createPlain(List<Path> paths, LoaderModMetadata metadata, boolean requiresRemap, Collection<ModCandidate> nestedMods)
-        val createPlainMethod = ModCandidate::class.java.getDeclaredMethod("createPlain", List::class.java, LoaderModMetadata::class.java, Boolean::class.java, Collection::class.java)
+        val createPlainMethod = ModCandidateImpl::class.java.getDeclaredMethod("createPlain", List::class.java, LoaderModMetadata::class.java, Boolean::class.java, Collection::class.java)
         createPlainMethod.isAccessible = true
 
         val metadata = createLoaderMetadata(mod)
 
-        return createPlainMethod.invoke(this, mod.paths, metadata, FabricLoader.getInstance().isDevelopmentEnvironment, mutableListOf<ModCandidate>().apply {
+        return createPlainMethod.invoke(this, mod.paths, metadata, FabricLoader.getInstance().isDevelopmentEnvironment, mutableListOf<ModCandidateImpl>().apply {
             mod.nested.forEach {
                 this.add(createModCandidate(it))
             }
-        }) as ModCandidate
+        }) as ModCandidateImpl
     }
 
     fun createLoaderMetadata(mod: QuiltMod): FabricModMetadata {
